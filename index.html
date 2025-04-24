@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebAssembly vs JavaScript Image Processing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .demo-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .image-container {
+            flex: 1;
+            min-width: 300px;
+        }
+        canvas {
+            max-width: 100%;
+            border: 1px solid #ddd;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .results {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .file-input {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebAssembly vs JavaScript Image Processing</h1>
+    
+    <p>This demo compares the performance of image processing operations using WebAssembly (compiled from Rust) vs pure JavaScript.</p>
+    
+    <div class="file-input">
+        <p>Choose an image to process:</p>
+        <input type="file" id="image-input" accept="image/*">
+    </div>
+    
+    <div class="demo-container">
+        <div class="image-container">
+            <h2>Original Image</h2>
+            <canvas id="original-canvas"></canvas>
+        </div>
+        <div class="image-container">
+            <h2>Processed Image</h2>
+            <canvas id="processed-canvas"></canvas>
+        </div>
+    </div>
+    
+    <div>
+        <h3>JavaScript Implementation</h3>
+        <button id="js-grayscale">Grayscale (JS)</button>
+        <button id="js-blur">Blur (JS)</button>
+        <button id="js-edge">Edge Detection (JS)</button>
+    </div>
+    
+    <div>
+        <h3>WebAssembly Implementation</h3>
+        <button id="wasm-grayscale">Grayscale (WASM)</button>
+        <button id="wasm-blur">Blur (WASM)</button>
+        <button id="wasm-edge">Edge Detection (WASM)</button>
+    </div>
+    
+    <div>
+        <button id="reset">Reset Image</button>
+    </div>
+    
+    <div class="results" id="results">
+        <h2>Performance Results</h2>
+        <p>Click a button above to run a test.</p>
+    </div>
+    
+    <script type="module">
+        // Import WebAssembly module
+        import init, { grayscale, blur, edge_detection } from './pkg/wasm_image_processor.js';
+        
+        let wasmModule;
+        
+        async function initWasm() {
+            wasmModule = await init();
+            console.log("WebAssembly module loaded successfully");
+        }
+        
+        // Initialize WebAssembly module
+        initWasm().catch(console.error);
+        
+        // Get canvas elements
+        const originalCanvas = document.getElementById('original-canvas');
+        const processedCanvas = document.getElementById('processed-canvas');
+        const originalCtx = originalCanvas.getContext('2d');
+        const processedCtx = processedCanvas.getContext('2d');
+        const resultsElement = document.getElementById('results');
+        
+        let imageData;
+        let originalImageData;
+        
+        // Setup file input handler
+        document.getElementById('image-input').addEventListener('change', handleImageUpload);
+        
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    // Resize canvas to match image
+                    const maxWidth = 600;
+                    const maxHeight = 400;
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > maxWidth) {
+                        height = (maxWidth / width) * height;
+                        width = maxWidth;
+                    }
+                    
+                    if (height > maxHeight) {
+                        width = (maxHeight / height) * width;
+                        height = maxHeight;
+                    }
+                    
+                    originalCanvas.width = width;
+                    originalCanvas.height = height;
+                    processedCanvas.width = width;
+                    processedCanvas.height = height;
+                    
+                    // Draw image
+                    originalCtx.drawImage(img, 0, 0, width, height);
+                    
+                    // Save original image data
+                    originalImageData = originalCtx.getImageData(0, 0, width, height);
+                    resetImage();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Create a default sample image if no image is uploaded
+        function createSampleImage() {
+            const width = 400;
+            const height = 300;
+            originalCanvas.width = width;
+            originalCanvas.height = height;
+            processedCanvas.width = width;
+            processedCanvas.height = height;
+            
+            // Draw a gradient and some shapes
+            const ctx = originalCtx;
+            
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            gradient.addColorStop(0, '#3498db');
+            gradient.addColorStop(1, '#2ecc71');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw some shapes
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(50, 50, 100, 100);
+            
+            ctx.fillStyle = '#f39c12';
+            ctx.beginPath();
+            ctx.arc(300, 150, 80, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#9b59b6';
+            ctx.beginPath();
+            ctx.moveTo(200, 50);
+            ctx.lineTo(350, 50);
+            ctx.lineTo(275, 150);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Save the original image data
+            originalImageData = originalCtx.getImageData(0, 0, width, height);
+            resetImage();
+        }
+        
+        function resetImage() {
+            // Copy original image to processed canvas
+            processedCtx.putImageData(originalImageData, 0, 0);
+            imageData = processedCtx.getImageData(0, 0, processedCanvas.width, processedCanvas.height);
+        }
+        
+        // JavaScript implementations 
+        function jsGrayscale() {
+            resetImage();
+            const startTime = performance.now();
+            
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                
+                // Standard grayscale conversion
+                const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                
+                data[i] = gray;
+                data[i + 1] = gray;
+                data[i + 2] = gray;
+            }
+            
+            processedCtx.putImageData(imageData, 0, 0);
+            
+            const endTime = performance.now();
+            displayResults('Grayscale (JavaScript)', endTime - startTime, null);
+        }
+        
+        function jsBlur() {
+            resetImage();
+            const startTime = performance.now();
+            
+            const src = new Uint8ClampedArray(imageData.data);
+            const dst = imageData.data;
+            const width = imageData.width;
+            const height = imageData.height;
+            
+            // Simple box blur
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    for (let c = 0; c < 3; c++) {
+                        const i = (y * width + x) * 4 + c;
+                        
+                        dst[i] = (
+                            src[((y - 1) * width + (x - 1)) * 4 + c] +
+                            src[((y - 1) * width + x) * 4 + c] +
+                            src[((y - 1) * width + (x + 1)) * 4 + c] +
+                            src[(y * width + (x - 1)) * 4 + c] +
+                            src[(y * width + x) * 4 + c] +
+                            src[(y * width + (x + 1)) * 4 + c] +
+                            src[((y + 1) * width + (x - 1)) * 4 + c] +
+                            src[((y + 1) * width + x) * 4 + c] +
+                            src[((y + 1) * width + (x + 1)) * 4 + c]
+                        ) / 9;
+                    }
+                }
+            }
+            
+            processedCtx.putImageData(imageData, 0, 0);
+            
+            const endTime = performance.now();
+            displayResults('Blur (JavaScript)', endTime - startTime, null);
+        }
+        
+        function jsEdgeDetection() {
+            resetImage();
+            const startTime = performance.now();
+            
+            const src = new Uint8ClampedArray(imageData.data);
+            const dst = new Uint8ClampedArray(imageData.data.length);
+            const width = imageData.width;
+            const height = imageData.height;
+            
+            // Convert to grayscale first
+            for (let i = 0; i < src.length; i += 4) {
+                const r = src[i];
+                const g = src[i + 1];
+                const b = src[i + 2];
+                const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                
+                src[i] = gray;
+                src[i + 1] = gray;
+                src[i + 2] = gray;
+            }
+            
+            // Simple edge detection using Sobel operator
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    // Sobel kernels
+                    const gx = 
+                        -1 * src[((y - 1) * width + (x - 1)) * 4] +
+                        0 * src[((y - 1) * width + x) * 4] +
+                        1 * src[((y - 1) * width + (x + 1)) * 4] +
+                        -2 * src[(y * width + (x - 1)) * 4] +
+                        0 * src[(y * width + x) * 4] +
+                        2 * src[(y * width + (x + 1)) * 4] +
+                        -1 * src[((y + 1) * width + (x - 1)) * 4] +
+                        0 * src[((y + 1) * width + x) * 4] +
+                        1 * src[((y + 1) * width + (x + 1)) * 4];
+                    
+                    const gy = 
+                        -1 * src[((y - 1) * width + (x - 1)) * 4] +
+                        -2 * src[((y - 1) * width + x) * 4] +
+                        -1 * src[((y - 1) * width + (x + 1)) * 4] +
+                        0 * src[(y * width + (x - 1)) * 4] +
+                        0 * src[(y * width + x) * 4] +
+                        0 * src[(y * width + (x + 1)) * 4] +
+                        1 * src[((y + 1) * width + (x - 1)) * 4] +
+                        2 * src[((y + 1) * width + x) * 4] +
+                        1 * src[((y + 1) * width + (x + 1)) * 4];
+                    
+                    const g = Math.sqrt(gx * gx + gy * gy);
+                    const i = (y * width + x) * 4;
+                    
+                    // Threshold
+                    const edge = g > 100 ? 255 : 0;
+                    
+                    dst[i] = edge;
+                    dst[i + 1] = edge;
+                    dst[i + 2] = edge;
+                    dst[i + 3] = 255;
+                }
+            }
+            
+            imageData.data.set(dst);
+            processedCtx.putImageData(imageData, 0, 0);
+            
+            const endTime = performance.now();
+            displayResults('Edge Detection (JavaScript)', endTime - startTime, null);
+        }
+        
+        // WebAssembly implementations
+        function wasmGrayscale() {
+            if (!wasmModule) {
+                alert("WebAssembly module is still loading. Please try again in a moment.");
+                return;
+            }
+            
+            resetImage();
+            const startTime = performance.now();
+            
+            try {
+                // Create a copy of the image data as a Uint8Array
+                const data = new Uint8Array(imageData.data);
+                
+                // Call the WebAssembly function
+                grayscale(data);
+                
+                // Copy the processed data back to the image data
+                imageData.data.set(data);
+                processedCtx.putImageData(imageData, 0, 0);
+                
+                const endTime = performance.now();
+                displayResults('Grayscale', null, endTime - startTime);
+            } catch (error) {
+                console.error("Error running WebAssembly grayscale:", error);
+                alert("Error running WebAssembly. See console for details.");
+            }
+        }
+        
+        function wasmBlur() {
+            if (!wasmModule) {
+                alert("WebAssembly module is still loading. Please try again in a moment.");
+                return;
+            }
+            
+            resetImage();
+            const startTime = performance.now();
+            
+            try {
+                // Create a copy of the image data as a Uint8Array
+                const data = new Uint8Array(imageData.data);
+                const width = imageData.width;
+                const height = imageData.height;
+                
+                // Call the WebAssembly function
+                blur(data, width, height);
+                
+                // Copy the processed data back to the image data
+                imageData.data.set(data);
+                processedCtx.putImageData(imageData, 0, 0);
+                
+                const endTime = performance.now();
+                displayResults('Blur', null, endTime - startTime);
+            } catch (error) {
+                console.error("Error running WebAssembly blur:", error);
+                alert("Error running WebAssembly. See console for details.");
+            }
+        }
+        
+        function wasmEdgeDetection() {
+            if (!wasmModule) {
+                alert("WebAssembly module is still loading. Please try again in a moment.");
+                return;
+            }
+            
+            resetImage();
+            const startTime = performance.now();
+            
+            try {
+                // Create a copy of the image data as a Uint8Array
+                const data = new Uint8Array(imageData.data);
+                const width = imageData.width;
+                const height = imageData.height;
+                
+                // Call the WebAssembly function
+                edge_detection(data, width, height);
+                
+                // Copy the processed data back to the image data
+                imageData.data.set(data);
+                processedCtx.putImageData(imageData, 0, 0);
+                
+                const endTime = performance.now();
+                displayResults('Edge Detection', null, endTime - startTime);
+            } catch (error) {
+                console.error("Error running WebAssembly edge detection:", error);
+                alert("Error running WebAssembly. See console for details.");
+            }
+        }
+        
+        function displayResults(operation, jsTime, wasmTime) {
+            let html = `<h2>Performance Results</h2>`;
+            
+            if (jsTime !== null) {
+                html += `<p><strong>${operation} (JavaScript):</strong> ${jsTime.toFixed(2)}ms</p>`;
+            }
+            
+            if (wasmTime !== null) {
+                html += `<p><strong>${operation} (WebAssembly):</strong> ${wasmTime.toFixed(2)}ms</p>`;
+            }
+            
+            if (jsTime !== null && wasmTime !== null) {
+                const speedup = jsTime / wasmTime;
+                html += `<p><strong>Speed improvement:</strong> ${speedup.toFixed(1)}x faster with WebAssembly</p>`;
+            }
+            
+            resultsElement.innerHTML = html;
+        }
+        
+        // Event listeners
+        document.getElementById('js-grayscale').addEventListener('click', jsGrayscale);
+        document.getElementById('js-blur').addEventListener('click', jsBlur);
+        document.getElementById('js-edge').addEventListener('click', jsEdgeDetection);
+        
+        document.getElementById('wasm-grayscale').addEventListener('click', wasmGrayscale);
+        document.getElementById('wasm-blur').addEventListener('click', wasmBlur);
+        document.getElementById('wasm-edge').addEventListener('click', wasmEdgeDetection);
+        
+        document.getElementById('reset').addEventListener('click', resetImage);
+        
+        // Initialize
+        createSampleImage();
+    </script>
+</body>
+</html>
