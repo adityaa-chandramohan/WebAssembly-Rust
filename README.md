@@ -56,8 +56,11 @@ Then open your browser to http://localhost:3000
 - Efficiency - WASM has a compact binary format that loads and parses faster than JavaScript.
 - Security - It runs in a memory-safe, sandboxed execution environment that enforces permissions-based security.
 - Portability - WASM is designed to work across all modern browsers and platforms.
-- Compatibility - It works alongside JavaScript, allowing for gradual adoption in existing web applications.
+- Compatibility - It works alongside JavaScript, allowing for gradual adoption in existing web applications. 
 - Predictable performance - No garbage collection pauses or JIT compilation delays.
 Reuse of existing code - Allows developers to port existing applications written in various languages to the web.
 - Smaller payload sizes - Binary format is typically more compact than equivalent JavaScript.
 - Platform independence - WebAssembly is becoming useful beyond browsers in server-side applications, IoT devices, and edge computing.
+
+  
+<img width="826" alt="Screenshot 2025-04-23 at 10 06 16 PM" src="https://github.com/user-attachments/assets/9d83b0d1-deb5-4d94-b546-0f2c719f3473" />
