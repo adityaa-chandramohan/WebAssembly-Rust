@@ -1,30 +1,30 @@
-1. Set Up Your Development Environment
+# 1. Set Up Your Development Environment
 For Rust + WebAssembly:
 
 
 bash# Install Rust if you don't have it
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Add WebAssembly target
+### Add WebAssembly target
 rustup target add wasm32-unknown-unknown
 
-# Install wasm-pack (for building and packaging Rust-generated WebAssembly)
+### Install wasm-pack (for building and packaging Rust-generated WebAssembly)
 cargo install wasm-pack
 
-2. Create a New Rust Project
+# 2. Create a New Rust Project
 
 bash# Create a new library project
 cargo new --lib wasm-image-processor
 cd wasm-image-processor
 
-3. Build Your WebAssembly Module
+# 3. Build Your WebAssembly Module
 
-# In your project directory
+### In your project directory
 wasm-pack build --target web
 
 This creates a pkg directory with your compiled WebAssembly and JavaScript glue code.
 
-4. Project Structure & Running the Application
+# 4. Project Structure & Running the Application
 Your final project structure should look like this:
 
 wasm-image-processor/
@@ -41,23 +41,23 @@ wasm-image-processor/
 To run the application:
 
 
-# First, build the WebAssembly module
+### First, build the WebAssembly module
 wasm-pack build --target web
 
-# Then, start the server
+### Then, start the server
 node server.js
 
 Then open your browser to http://localhost:3000
 
-WebAssembly offers several significant advantages for web development and beyond:
+# WebAssembly offers several significant advantages for web development and beyond:
 
-Performance - WASM executes at near-native speed, much faster than JavaScript for computationally intensive tasks.
-Language flexibility - You can write code in C/C++, Rust, Go, and many other languages, then compile to WebAssembly.
-Efficiency - WASM has a compact binary format that loads and parses faster than JavaScript.
-Security - It runs in a memory-safe, sandboxed execution environment that enforces permissions-based security.
-Portability - WASM is designed to work across all modern browsers and platforms.
-Compatibility - It works alongside JavaScript, allowing for gradual adoption in existing web applications.
-Predictable performance - No garbage collection pauses or JIT compilation delays.
+- Performance - WASM executes at near-native speed, much faster than JavaScript for computationally intensive tasks.
+- Language flexibility - You can write code in C/C++, Rust, Go, and many other languages, then compile to WebAssembly.
+- Efficiency - WASM has a compact binary format that loads and parses faster than JavaScript.
+- Security - It runs in a memory-safe, sandboxed execution environment that enforces permissions-based security.
+- Portability - WASM is designed to work across all modern browsers and platforms.
+- Compatibility - It works alongside JavaScript, allowing for gradual adoption in existing web applications.
+- Predictable performance - No garbage collection pauses or JIT compilation delays.
 Reuse of existing code - Allows developers to port existing applications written in various languages to the web.
-Smaller payload sizes - Binary format is typically more compact than equivalent JavaScript.
-Platform independence - WebAssembly is becoming useful beyond browsers in server-side applications, IoT devices, and edge computing.
+- Smaller payload sizes - Binary format is typically more compact than equivalent JavaScript.
+- Platform independence - WebAssembly is becoming useful beyond browsers in server-side applications, IoT devices, and edge computing.
